@@ -1,4 +1,5 @@
 import React from 'react'
+import Link from 'next/link'
 import { AtomicNote } from '@/lib/types'
 
 const importanceColors: Record<number, string> = {
@@ -41,46 +42,48 @@ export function NoteCard({ note, showContent = true }: NoteCardProps) {
   }
 
   return (
-    <div
-      className={'border-l-4 p-5 rounded-lg border border-gray-800 transition-all hover:border-gray-700 ' + (importanceColors[note.importance] || '')}
-    >
-      <div className="flex items-start justify-between gap-4 mb-3">
-        <h3 className="text-base font-semibold text-white flex-1 leading-tight">{note.title}</h3>
-        <span
-          className={'text-xs font-semibold px-2.5 py-1 rounded whitespace-nowrap ' + (importanceBadges[note.importance] || '')}
-        >
-          Level {note.importance}
-        </span>
-      </div>
-
-      {showContent && (
-        <p className="text-gray-300 text-sm mb-4 leading-relaxed">
-          {truncateContent(note.content)}
-        </p>
-      )}
-
-      <div className="flex items-center justify-between text-xs">
-        <div className="flex items-center gap-3 flex-wrap">
-          <span className="bg-gray-800/50 px-2 py-1 rounded text-gray-300">
-            #{note.channel_name}
+    <Link href={'/notes/' + note.id} className="block">
+      <div
+        className={'border-l-4 p-5 rounded-lg border border-gray-800 transition-all hover:border-blue-500 hover:bg-gray-800/30 cursor-pointer ' + (importanceColors[note.importance] || '')}
+      >
+        <div className="flex items-start justify-between gap-4 mb-3">
+          <h3 className="text-base font-semibold text-white flex-1 leading-tight">{note.title}</h3>
+          <span
+            className={'text-xs font-semibold px-2.5 py-1 rounded whitespace-nowrap ' + (importanceBadges[note.importance] || '')}
+          >
+            Level {note.importance}
           </span>
-          <span className="text-gray-400">{typeLabels[note.note_type] || note.note_type}</span>
         </div>
-        <span className="text-gray-500">{formatDate(note.week_start || note.created_at)}</span>
-      </div>
 
-      {note.topics && note.topics.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {note.topics.slice(0, 3).map((topic: string, idx: number) => (
-            <span key={idx} className="bg-gray-800/30 px-2 py-1 rounded text-xs text-gray-400">
-              {topic}
+        {showContent && (
+          <p className="text-gray-300 text-sm mb-4 leading-relaxed">
+            {truncateContent(note.content)}
+          </p>
+        )}
+
+        <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="bg-gray-800/50 px-2 py-1 rounded text-gray-300">
+              #{note.channel_name}
             </span>
-          ))}
-          {note.topics.length > 3 && (
-            <span className="text-xs text-gray-500">+{note.topics.length - 3} more</span>
-          )}
+            <span className="text-gray-400">{typeLabels[note.note_type] || note.note_type}</span>
+          </div>
+          <span className="text-gray-500">{formatDate(note.week_start || note.created_at)}</span>
         </div>
-      )}
-    </div>
+
+        {note.topics && note.topics.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {note.topics.slice(0, 3).map((topic: string, idx: number) => (
+              <span key={idx} className="bg-gray-800/30 px-2 py-1 rounded text-xs text-gray-400">
+                {topic}
+              </span>
+            ))}
+            {note.topics.length > 3 && (
+              <span className="text-xs text-gray-500">+{note.topics.length - 3} more</span>
+            )}
+          </div>
+        )}
+      </div>
+    </Link>
   )
 }
