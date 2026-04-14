@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { StatCard } from '@/components/StatCard'
 import { WeeklyTrendChart, NoteTypeDistChart, HorizontalBarChart } from '@/components/Charts'
 import { NoteCard } from '@/components/NoteCard'
