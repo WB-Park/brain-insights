@@ -12,21 +12,19 @@ export async function GET(request: Request) {
       .select('*')
       .eq('status', 'active')
       .order('week_start', { ascending: false })
+      .limit(limit)
 
-    const { data, error } = await query.limit(limit * 2)
+    if (topic) {
+      query = query.contains('topics', [topic])
+    }
+
+    const { data, error } = await query
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    let results = data || []
-    if (topic) {
-      results = results.filter(
-        (note: any) => note.topics && Array.isArray(note.topics) && note.topics.includes(topic)
-      )
-    }
-
-    return NextResponse.json(results.slice(0, limit))
+    return NextResponse.json(data || [])
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 })
   }
