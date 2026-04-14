@@ -1,29 +1,18 @@
 import { supabase } from '@/lib/supabase'
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
-    const { data: notes, error } = await supabase
-      .from('atomic_notes')
-      .select('channel_name')
-      .eq('status', 'active')
-
+    const { data, error } = await supabase.rpc('get_channel_counts', { p_limit: 20 })
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
-
-    const channelMap = new Map<string, number>()
-    notes?.forEach(note => {
-      if (note.channel_name) {
-        channelMap.set(note.channel_name, (channelMap.get(note.channel_name) || 0) + 1)
-      }
-    })
-
-    const channels = Array.from(channelMap.entries())
-      .map(([channel_name, count]) => ({ channel_name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 20)
-
+    const channels = (data || []).map((r: { channel_name: string; count: number | string }) => ({
+      channel_name: r.channel_name,
+      count: Number(r.count),
+    }))
     return NextResponse.json(channels)
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 })

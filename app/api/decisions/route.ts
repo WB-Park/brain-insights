@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase'
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -14,6 +16,7 @@ export async function GET(request: Request) {
       .eq('status', 'active')
       .eq('note_type', 'decision')
       .order('week_start', { ascending: false })
+      .limit(limit)
 
     if (importance === '5') {
       query = query.eq('importance', 5)
@@ -21,23 +24,18 @@ export async function GET(request: Request) {
       query = query.gte('importance', 4)
     }
 
-    const { data, error } = await query.limit(limit)
+    if (search && search.trim()) {
+      const safe = search.replace(/[%,()]/g, ' ').trim()
+      if (safe) {
+        query = query.or('title.ilike.%' + safe + '%,content.ilike.%' + safe + '%')
+      }
+    }
 
+    const { data, error } = await query
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
-
-    let results = data || []
-    if (search) {
-      const searchLower = search.toLowerCase()
-      results = results.filter(
-        (note: any) =>
-          note.title.toLowerCase().includes(searchLower) ||
-          note.content.toLowerCase().includes(searchLower)
-      )
-    }
-
-    return NextResponse.json(results)
+    return NextResponse.json(data || [])
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 })
   }
