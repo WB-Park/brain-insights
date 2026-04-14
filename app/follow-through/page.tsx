@@ -23,11 +23,20 @@ const importanceBadges: Record<number, string> = {
 }
 
 export default async function FollowThroughPage() {
-  const { data } = await supabase.rpc('get_followthrough_gaps', {
-    lookback_days: 90,
-    gap_days: 14,
+  const [{ data }, { data: weights }] = await Promise.all([
+    supabase.rpc('get_followthrough_gaps', { lookback_days: 90, gap_days: 14 }),
+    supabase.from('channel_exec_relevance').select('channel_id,weight'),
+  ])
+  const weightMap = new Map<string, number>()
+  ;((weights as any[]) || []).forEach((w) => weightMap.set(w.channel_id, Number(w.weight)))
+  const allGaps = (data as Gap[] | null) || []
+  // CEO relevant 채널(weight >= 1.0) + gap 14~30일만 (31일+는 CEO 인지 가능성 높음)
+  const gaps = allGaps.filter((g) => {
+    const w = weightMap.get(g.channel_id) ?? 1.0
+    if (w < 1.0) return false
+    if (g.days_since < 14 || g.days_since > 30) return false
+    return true
   })
-  const gaps = (data as Gap[] | null) || []
 
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -36,7 +45,7 @@ export default async function FollowThroughPage() {
     <div className="p-8 max-w-7xl">
       <h1 className="text-3xl font-bold text-white mb-2">Follow-through 공백</h1>
       <p className="text-gray-400 mb-8">
-        최근 90일 내 의사결정 중, 결정일 이후 14일간 같은 주제로 후속 노트가 0건인 건.
+        최근 90일 내 의사결정 중, 결정일 이후 14~30일간 같은 주제 후속 노트 0건 + CEO 가중치 1.0 이상 채널만.
       </p>
 
       <div className="mb-6 p-4 bg-amber-500/5 border border-amber-500/20 rounded text-sm text-amber-200">
@@ -50,7 +59,7 @@ export default async function FollowThroughPage() {
       </div>
 
       {gaps.length === 0 ? (
-        <p className="text-gray-500">현재 탐지된 공백 없음.</p>
+        <p className="text-gray-500">현재 탐지된 곴백 없음.</p>
       ) : (
         <div className="space-y-3">
           {gaps.map((g) => (

@@ -33,8 +33,11 @@ function buildSparkline(values: number[], width = 80, height = 24): string {
 }
 
 export default async function TrendsPage() {
-  const { data: anomaliesData } = await supabase.rpc('get_topic_anomalies', { min_recent: 3 })
-  const anomalies = ((anomaliesData as Anomaly[] | null) || []).slice(0, 20)
+  const { data: anomaliesData } = await supabase.rpc('get_topic_anomalies', { min_recent: 4 })
+  // 최소 샘플 크기 가드: baseline_weekly_avg >= 1.0 (0.5→3 같은 노이즈 배제)
+  const anomalies = ((anomaliesData as Anomaly[] | null) || [])
+    .filter((a) => Number(a.baseline_weekly_avg) >= 1.0)
+    .slice(0, 20)
 
   const { data: weeklyData } = await supabase.rpc('get_topic_weekly_counts', { weeks_back: 12 })
   const weekly = (weeklyData as WeeklyCount[] | null) || []
@@ -56,7 +59,7 @@ export default async function TrendsPage() {
     <div className="p-8 max-w-7xl">
       <h1 className="text-3xl font-bold text-white mb-2">트렌드 · 이상 신호</h1>
       <p className="text-gray-400 mb-8">
-        최근 7일 언급량이 이전 4주 평균 대비 급증한 주제. 경보 탐지용.
+        최근 7일 언급량이 이전 4주 평균 대비 급증한 주제. 최소 샘플 크기(주당 평균 ≥ 1건) 통과분만 표시.
       </p>
 
       <div className="mb-6 p-4 bg-amber-500/5 border border-amber-500/20 rounded text-sm text-amber-200">

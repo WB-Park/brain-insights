@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 import { StatCard } from '@/components/StatCard'
 import { WeeklyTrendChart, NoteTypeDistChart, HorizontalBarChart } from '@/components/Charts'
 import { NoteCard } from '@/components/NoteCard'
@@ -25,19 +26,23 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Fetch stats
         const statsRes = await fetch('/api/stats')
         const statsData = await statsRes.json()
         setStats(statsData)
 
+        // Fetch topics
         const topicsRes = await fetch('/api/topics')
         const topicsData = await topicsRes.json()
         setTopics(topicsData)
 
+        // Fetch channels
         const channelsRes = await fetch('/api/channels')
         const channelsData = await channelsRes.json()
         setChannels(channelsData)
 
-        const decisionsRes = await fetch('/api/decisions?importance=5&limit=5')
+        // Fetch CEO-weighted top decisions (weighted_importance >= 4.0)
+        const decisionsRes = await fetch('/api/decisions?ceo_relevant=true&limit=5')
         const decisionsData = await decisionsRes.json()
         setCriticalDecisions(decisionsData)
       } catch (error) {
@@ -73,23 +78,30 @@ export default function Dashboard() {
 
   return (
     <div className="p-8 space-y-8">
+      {/* Hero Stats Row */}
       <div>
         <h1 className="text-4xl font-bold text-white mb-8">Brain Insights</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           <StatCard label="총 노트" value={stats.totalNotes} icon={BarChart3} color="text-blue-400" />
           <StatCard label="의사결정" value={stats.decisions} icon={CheckSquare} color="text-amber-400" />
-          <StatCard label="인사이트" value={stats.insights} icon={Lightbulb} color="text-emerald-400" />
+          <StatCard
+            label="인사이트"
+            value={stats.insights}
+            icon={Lightbulb}
+            color="text-emerald-400"
+          />
           <StatCard label="리스크" value={stats.risks} icon={AlertCircle} color="text-rose-400" />
           <StatCard label="액션아이템" value={stats.actionItems} icon={Zap} color="text-cyan-400" />
           <StatCard label="패턴" value={stats.patterns} icon={Shuffle} color="text-purple-400" />
         </div>
       </div>
 
+      {/* CEO Level Notes */}
       <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
         <div className="flex items-center gap-2 mb-4">
           <TrendingUp className="w-5 h-5 text-red-400" />
-          <h2 className="text-lg font-semibold text-white">CEO 레벨 의사결정 (Level 5)</h2>
-          <span className="text-sm text-gray-400 ml-auto">{stats.importance5Count}건</span>
+          <h2 className="text-lg font-semibold text-white">CEO 가중치 상위 의사결정</h2>
+          <span className="text-sm text-gray-400 ml-auto">importance × channel_weight ≥ 4.0</span>
         </div>
         <div className="space-y-3">
           {criticalDecisions.length > 0 ? (
@@ -100,11 +112,13 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <WeeklyTrendChart data={stats.weeklyTrend} />
         <NoteTypeDistChart data={stats.noteTypeDist} />
       </div>
 
+      {/* Top Topics and Channels */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <HorizontalBarChart
           data={topics.slice(0, 15).map(t => ({ topic: t.topic, count: t.count }))}

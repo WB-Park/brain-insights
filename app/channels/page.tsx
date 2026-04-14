@@ -16,8 +16,25 @@ interface ChannelStat {
 }
 
 export default async function ChannelsPage() {
-  const { data } = await supabase.rpc('get_channel_stats')
-  const channels = (data as ChannelStat[] | null) || []
+  const [{ data }, { data: weights }] = await Promise.all([
+    supabase.rpc('get_channel_stats'),
+    supabase.from('channel_exec_relevance').select('channel_id,weight,category'),
+  ])
+  const weightMap = new Map<string, { weight: number; category: string | null }>()
+  ;((weights as any[]) || []).forEach((w) =>
+    weightMap.set(w.channel_id, { weight: Number(w.weight), category: w.category }),
+  )
+  const channelsRaw = (data as ChannelStat[] | null) || []
+  const channels = channelsRaw
+    .map((c) => {
+      const w = weightMap.get(c.channel_id)
+      return {
+        ...c,
+        weight: w?.weight ?? 1.0,
+        category: w?.category ?? null,
+      }
+    })
+    .sort((a, b) => b.weight - a.weight || b.total_notes - a.total_notes)
 
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })
@@ -31,7 +48,7 @@ export default async function ChannelsPage() {
     <div className="p-8 max-w-7xl">
       <h1 className="text-3xl font-bold text-white mb-2">채널 분포</h1>
       <p className="text-gray-400 mb-6">
-        채널별 노트 집계. 어느 채널이 의사결정 허브/리스크 허브인지, 어느 채널이 조용해졌는지 파악용.
+        채널별 노트 집계 + CEO 가중치. 가중치 &lt; 1.0은 루틴 실무 채널로 분류되어 브리핑·Follow-through·이상치 탐지에서 배제/감점됩니다.
       </p>
 
       <div className="mb-6 p-4 bg-amber-500/5 border border-amber-500/20 rounded text-sm text-amber-200">
@@ -44,6 +61,8 @@ export default async function ChannelsPage() {
           <thead className="bg-gray-900 border-b border-gray-800">
             <tr className="text-left text-gray-400">
               <th className="p-3 font-medium">채널</th>
+              <th className="p-3 font-medium text-right">CEO 가중치</th>
+              <th className="p-3 font-medium">카테고리</th>
               <th className="p-3 font-medium text-right">전체</th>
               <th className="p-3 font-medium text-right">결정</th>
               <th className="p-3 font-medium text-right">리스크</th>
@@ -73,6 +92,21 @@ export default async function ChannelsPage() {
                       #{c.channel_name}
                     </a>
                   </td>
+                  <td
+                    className={
+                      'p-3 text-right font-mono ' +
+                      (c.weight >= 1.5
+                        ? 'text-emerald-400 font-semibold'
+                        : c.weight >= 1.0
+                          ? 'text-blue-300'
+                          : c.weight >= 0.7
+                            ? 'text-gray-400'
+                            : 'text-gray-600')
+                    }
+                  >
+                    {c.weight.toFixed(2)}
+                  </td>
+                  <td className="p-3 text-gray-400 text-xs">{c.category || '-'}</td>
                   <td className="p-3 text-right text-white font-semibold">{c.total_notes}</td>
                   <td className="p-3 text-right text-blue-400">{c.decisions}</td>
                   <td className="p-3 text-right text-red-400">{c.risks}</td>
